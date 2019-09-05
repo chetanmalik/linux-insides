@@ -64,15 +64,15 @@ As mentioned above the GDT contains `segment descriptors` which describe memory 
 ------------------------------------------------------------
 |             | |B| |A|       | |   | |0|E|W|A|            |
 | BASE 31:24  |G|/|L|V| LIMIT |P|DPL|S|  TYPE | BASE 23:16 |
-|     |     | D   |     | L   | 19:16 |     |     |     | 1   | C   | R   | A   |     |
-| --- |
+|             | |D| |L| 19:16 | |   | |1|C|R|A|            |
+------------------------------------------------------------
 
  31                         16 15                         0 
 ------------------------------------------------------------
 |                             |                            |
 |        BASE 15:0            |       LIMIT 15:0           |
-|     |     |
-| --- |
+|                             |                            |
+------------------------------------------------------------
 ```
 
 Don't worry, I know it looks a little scary after real mode, but it's easy. For example LIMIT 15:0 means that bits 0-15 of Limit are located at the beginning of the Descriptor. The rest of it is in LIMIT 19:16, which is located at bits 48-51 of the Descriptor. So, the size of Limit is 0-19 i.e 20-bits. Let's take a closer look at it:
@@ -98,10 +98,11 @@ To determine if the segment is a code or data segment, we can check its Ex(bit 4
 A segment can be of one of the following types:
 
 ```
-| Type Field                  | Descriptor Type | Description                        |
-| --------------------------- | --------------- | ---------------------------------- |
-| Decimal                     |                 |
-| 0    E    W   A             |                 |
+--------------------------------------------------------------------------------------
+|           Type Field        | Descriptor Type | Description                        |
+|-----------------------------|-----------------|------------------------------------|
+| Decimal                     |                 |                                    |
+|             0    E    W   A |                 |                                    |
 | 0           0    0    0   0 | Data            | Read-Only                          |
 | 1           0    0    0   1 | Data            | Read-Only, accessed                |
 | 2           0    0    1   0 | Data            | Read/Write                         |
@@ -110,7 +111,7 @@ A segment can be of one of the following types:
 | 5           0    1    0   1 | Data            | Read-Only, expand-down, accessed   |
 | 6           0    1    1   0 | Data            | Read/Write, expand-down            |
 | 7           0    1    1   1 | Data            | Read/Write, expand-down, accessed  |
-| C    R   A                  |                 |
+|                  C    R   A |                 |                                    |
 | 8           1    0    0   0 | Code            | Execute-Only                       |
 | 9           1    0    0   1 | Code            | Execute-Only, accessed             |
 | 10          1    0    1   0 | Code            | Execute/Read                       |
@@ -119,6 +120,7 @@ A segment can be of one of the following types:
 | 14          1    1    0   1 | Code            | Execute-Only, conforming, accessed |
 | 13          1    1    1   0 | Code            | Execute/Read, conforming           |
 | 15          1    1    1   1 | Code            | Execute/Read, conforming, accessed |
+--------------------------------------------------------------------------------------
 ```
 
 As we can see the first bit(bit 43) is `0` for a _data_ segment and `1` for a _code_ segment. The next three bits (40, 41, 42) are either `EWA`(*E*xpansion *W*ritable *A*ccessible) or CRA(*C*onforming *R*eadable *A*ccessible).
@@ -143,8 +145,8 @@ Segment registers contain segment selectors as in real mode. However, in protect
 ```
  15             3 2  1     0
 -----------------------------
-| Index | TI  | RPL |
-| ----- |
+|      Index     | TI | RPL |
+-----------------------------
 ```
 
 Where,
@@ -306,7 +308,7 @@ ENDPROC(memset)
 
 As you can read above, it uses the same calling conventions as the `memcpy` function, which means that the function gets its parameters from the `ax`, `dx` and `cx` registers.
 
-The implementation of `memset` is similar to that of memcpy. It saves the value of the `di` register on the stack and puts the value of`ax`, which stores the address of the `biosregs` structure, into `di` . Next is the `movzbl` instruction, which copies the value of `dl` to the lower 2 bytes of the `eax` register. The remaining 2 high bytes  of `eax` will be filled with zeros.
+The implementation of `memset` is similar to that of memcpy. It saves the value of the `di` register on the stack and puts the value of`ax`, which stores the address of the `biosregs` structure, into `di` . Next is the `movzbl` instruction, which copies the value of `dl` to the lowermost byte of the `eax` register. The remaining 3 high bytes of `eax` will be filled with zeros.
 
 The next instruction multiplies `eax` with `0x01010101`. It needs to because `memset` will copy 4 bytes at the same time. For example, if we need to fill a structure whose size is 4 bytes with the value `0x7` with memset, `eax` will contain the `0x00000007`. So if we multiply `eax` with `0x01010101`, we will get `0x07070707` and now we can copy these 4 bytes into the structure. `memset` uses the `rep; stosl` instruction to copy `eax` into `es:di`.
 
